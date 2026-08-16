@@ -420,13 +420,14 @@ footer a:hover{color:var(--ink2)}
     </div>
     <div>
       <ol>
-        <li>把 Yore 拖进「应用程序」</li>
-        <li>按住 Control 点它，选「打开」，弹窗里再点一次「打开」</li>
-        <li>如果 macOS 说「已损坏」，在终端粘这行再双击：
-          <code>xattr -dr com.apple.quarantine /Applications/Yore.app</code>
+        <li>把「旧游」拖进「应用程序」</li>
+        <li>双击它，会被拦住。<b>这一步不能跳</b> —— 不先被拦一次，下一步就找不到入口</li>
+        <li>打开「系统设置 → 隐私与安全性」，一路滚到底，点「仍要打开」</li>
+        <li>要是还不行，在「终端」里粘这行，再双击：
+          <code>xattr -dr com.apple.quarantine /Applications/旧游.app</code>
         </li>
       </ol>
-      <p class="why">没有买苹果的开发者证书，所以会被拦。「已损坏」是 Gatekeeper 的标准说辞，不是真的坏了。以后再打开就不会问。</p>
+      <p class="why">没有买苹果的开发者证书，所以会被拦。macOS 15 起，老办法「按住 Control 点击 → 打开」已经被苹果取消了，只剩上面这条路。放行一次之后就不再问。</p>
     </div>
   </section>
 
