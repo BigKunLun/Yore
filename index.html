@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yore 旧游 — 你去过的地方，照片全都记着</title>
+<meta name="description" content="读一遍 Mac「照片」图库，这些年的旅行自己就排出来了 —— 哪年去了哪、待了几天、当时拍了什么。你一个字都不用填。零输入，全本地，只读不写。">
+
+<meta property="og:title" content="Yore 旧游 — 你去过的地方，照片全都记着">
+<meta property="og:description" content="读一遍 Mac「照片」图库，这些年的旅行自己就排出来了。你一个字都不用填。零输入，全本地，只读不写。">
+<meta property="og:image" content="assets/icon.png">
+<meta property="og:type" content="website">
+
+<link rel="icon" href="assets/icon.png">
+
+<style>
+/* ── token 全部取自 design/B.html，与 App 主题一一对应 ─────── */
+:root{
+  --ink:    #14171c;
+  --ink2:   #333944;
+  --dim:    #666e7b;
+  --faint:  #98a0ac;
+  --hair:   rgba(18,22,28,.09);
+  --hair2:  rgba(18,22,28,.055);
+  --glass:  rgba(253,253,254,.74);
+  --solid:  #fbfbfc;
+  --ac:     #c2571f;
+  --ac-d:   #8e3d0f;
+  --ac-w:   rgba(194,87,31,.09);
+  --e:      cubic-bezier(.32,.72,0,1);
+  --sans:   -apple-system,"SF Pro Text","PingFang SC",system-ui,"Helvetica Neue",sans-serif;
+  --num:    "SF Mono",ui-monospace,Menlo,monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+
+body{
+  background:var(--solid);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+.wrap{max-width:1000px;margin:0 auto;padding:0 32px}
+
+/* 小号大写标签：B 稿里最有辨识度的元素 */
+.tag{
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--ac);
+}
+
+/* ── 顶栏（玻璃） ─────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:10;
+  background:var(--glass);
+  backdrop-filter:blur(14px) saturate(180%);
+  -webkit-backdrop-filter:blur(14px) saturate(180%);
+  border-bottom:1px solid var(--hair2);
+}
+.bar{
+  max-width:1000px;margin:0 auto;padding:13px 32px;
+  display:flex;align-items:center;gap:10px;
+}
+.bar img{width:22px;height:22px;border-radius:5px}
+.bar b{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+.bar .cn{font-size:11.5px;color:var(--faint);letter-spacing:.06em}
+.bar .right{margin-left:auto;font-size:11.5px;color:var(--dim);text-decoration:none}
+.bar .right:hover{color:var(--ink)}
+
+/* ── 第一屏：左文右图 ─────────────────────────── */
+/* 曾经是五层居中堆叠（巨型 Yore → 钩子 → 英文 → 解释 → 下载），读者得一路
+   读到第四层才知道这东西干嘛，而最有说服力的截图被挤到折叠线以下。
+   改成左右分栏：同样的内容纵向少占一半，文案和截图一起待在首屏里。
+   留白从「上下拉开」改成「左右分配」—— 层数少了，间距才有地方给。 */
+.hero{
+  padding:76px 0 92px;
+  /* 右边那张图故意溢出容器，得把溢出部分裁掉，否则整页多一条横向滚动条。
+     只能用 clip 不能用 hidden：hidden 会把这里变成滚动容器，顶栏的
+     position:sticky 会跟着失效 —— 症状是滚动时顶栏不再吸顶，很难联想到这行。 */
+  overflow-x:clip;
+}
+.hero-grid{
+  display:grid;
+  /* 左栏给下限，否则中等宽度下「你去过的地方，」会被挤断成三行 */
+  grid-template-columns:minmax(300px,.82fr) 1.18fr;
+  gap:52px;
+  align-items:center;
+}
+
+.hero .eyebrow{
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  color:var(--faint);
+}
+.hero .eyebrow b{color:var(--ac);font-weight:600}
+
+/* 现代感的来源：大字号 + 负字距，不是撑开的字距 */
+.hero h1{
+  font-size:clamp(32px,4.4vw,46px);
+  font-weight:600;
+  letter-spacing:-.04em;
+  line-height:1.26;
+  color:var(--ink);
+  margin-top:26px;
+}
+.hero .say{
+  font-size:14.5px;
+  line-height:1.9;
+  letter-spacing:-.005em;
+  color:var(--dim);
+  margin-top:22px;
+  max-width:20em;
+}
+
+/* 这里曾经有一条数字带（去过多少城市 / 多少天在路上 / 多少段旅行）。
+   撤掉了：那几个数是图库主人的真实统计，`redact.mjs` 只换地名人名坐标、
+   不碰数字，放大摆在首屏等于把真实个人数据当宣传语。截图左下角还留着
+   同样的小字，那是界面本身的一部分，不放大也不强调 —— 别再把它捞回首屏。
+   这份文件会整份推到公开仓，注释里同样不要写出具体数值。 */
+
+/* 向右溢出：暗示「后面还有更多」，也让首屏不必把整张图塞进去。
+   靠上面 .hero 的 overflow-x:clip 收边。 */
+.hero .shotwrap{margin-right:-120px}
+
+/* 1120 到 760 之间：窗口窄了，但栏宽比例不变的话左栏会被挤到放不下标题
+   （「你去过的地方，」七个字顶满一行），同时图在屏幕里的占比变大、
+   裁掉的那一截显得更刺眼。这一档把左栏加宽、溢出收窄。 */
+@media(max-width:1120px){
+  .hero-grid{grid-template-columns:minmax(280px,.9fr) 1.1fr;gap:40px}
+  .hero .shotwrap{margin-right:-72px}
+  .hero h1{font-size:clamp(30px,3.9vw,40px)}
+}
+
+/* ── 下载 ─────────────────────────────────────── */
+/* 左栏里的按钮，跟标题左边缘对齐 —— center 会让它浮在文案块中间，
+   和左对齐的正文错位半个身位 */
+.cta{margin-top:34px;display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--ac);
+  color:#fff;
+  font-size:13.5px;font-weight:600;letter-spacing:.01em;
+  padding:11px 26px;
+  border-radius:8px;
+  text-decoration:none;
+  box-shadow:0 1px 2px rgba(18,22,28,.14),0 4px 14px -4px rgba(194,87,31,.42);
+  transition:background .2s var(--e),transform .2s var(--e),box-shadow .2s var(--e);
+}
+.btn:hover{
+  background:var(--ac-d);
+  transform:translateY(-1px);
+  box-shadow:0 2px 4px rgba(18,22,28,.16),0 8px 22px -5px rgba(194,87,31,.5);
+}
+.btn svg{width:13px;height:13px;fill:currentColor;opacity:.9}
+
+.meta{
+  font-size:11px;color:var(--faint);
+  font-family:var(--num);letter-spacing:.02em;
+}
+.meta i{font-style:normal;color:var(--hair);margin:0 7px}
+
+/* ── 截图 ─────────────────────────────────────── */
+.shot-frame{
+  border:1px solid var(--hair);
+  border-radius:9px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:
+    0 1px 2px rgba(18,22,28,.05),
+    0 8px 24px -8px rgba(18,22,28,.14),
+    0 32px 64px -24px rgba(18,22,28,.18);
+}
+.shot-frame img{display:block;width:100%;height:auto}
+
+.shot-frame.empty{
+  aspect-ratio:16/10;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:7px;
+  border:1px dashed var(--hair);
+  background:linear-gradient(180deg,#fff,var(--solid));
+  box-shadow:none;
+}
+.shot-frame.empty img{display:none}
+.shot-frame.empty::before{
+  content:"截图占位";
+  font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--faint);
+}
+.shot-frame.empty::after{
+  content:"site/assets/shot-1.jpg";
+  font-family:var(--num);font-size:10.5px;color:var(--faint);opacity:.6;
+}
+/* ── 章节头 ───────────────────────────────────── */
+.sec{margin-top:104px}
+/* 第一屏自己已经有 92px 下留白，再叠 104px 会空出一大截 */
+.hero + .sec{margin-top:56px}
+.sec-head{margin-bottom:34px}
+.sec-head h2{
+  font-size:23px;font-weight:600;
+  letter-spacing:-.028em;
+  margin-top:9px;
+}
+.sec-head .sub{font-size:12.5px;color:var(--faint);margin-top:7px}
+
+/* ── 你会看到什么 ─────────────────────────────── */
+.views{border-top:1px solid var(--hair2)}
+.views > div{
+  display:grid;grid-template-columns:132px 1fr;gap:28px;
+  padding:24px 0;
+  border-bottom:1px solid var(--hair2);
+}
+.views h3{
+  font-size:14.5px;font-weight:600;letter-spacing:-.012em;
+  display:flex;align-items:baseline;gap:9px;
+}
+.views h3 em{
+  font-family:var(--num);font-style:normal;
+  font-size:10px;color:var(--ac);letter-spacing:.06em;
+}
+.views p{font-size:12.5px;color:var(--dim);line-height:1.85;max-width:44em}
+
+/* 两张次要截图并排 */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}
+.duo .shot-frame.empty{aspect-ratio:4/3}
+
+/* ── 年鉴里有什么 ─────────────────────────────── */
+/* 两列网格。整卡截图（1512 宽）跨满两列，duo 里的半卡截图（741 宽）各占一列
+   —— 让每张图都按它原本的宽度显示，缩进半栏会把省名和排行的小字糊掉。 */
+.gal{display:grid;grid-template-columns:1fr 1fr;gap:26px 20px;align-items:start}
+.gal figure.w{grid-column:1/-1}
+/* 首屏那张大图的三层阴影摆在这儿太吵：十几张叠起来页面像在发抖 */
+.gal .shot-frame{
+  box-shadow:0 1px 2px rgba(18,22,28,.04),0 6px 18px -8px rgba(18,22,28,.13);
+}
+.gal figcaption{margin-top:11px;font-size:12px;color:var(--dim);line-height:1.75}
+.gal figcaption b{
+  display:block;font-size:13px;font-weight:600;color:var(--ink);
+  letter-spacing:-.012em;margin-bottom:1px;
+}
+
+/* ── 它怎么知道的 ─────────────────────────────── */
+.how{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--hair2);
+  border:1px solid var(--hair2);border-radius:9px;overflow:hidden;
+}
+.how > div{background:var(--solid);padding:26px 24px 30px;position:relative}
+.how .step{
+  font-family:var(--num);font-size:10px;
+  color:var(--faint);letter-spacing:.1em;
+}
+.how h3{
+  font-size:14px;font-weight:600;letter-spacing:-.012em;
+  margin:10px 0 9px;
+}
+.how p{font-size:12.5px;color:var(--dim);line-height:1.8}
+.how .aside{
+  font-size:11.5px;color:var(--faint);
+  margin-top:12px;padding-left:11px;
+  border-left:2px solid var(--ac-w);
+  line-height:1.75;
+}
+
+/* ── 三点 ─────────────────────────────────────── */
+.points{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;
+  background:var(--hair2);
+  border:1px solid var(--hair2);
+  border-radius:9px;
+  overflow:hidden;
+}
+.points > div{background:var(--solid);padding:30px 28px 34px}
+.points .n{
+  font-family:var(--num);font-size:10.5px;
+  color:var(--ac);letter-spacing:.08em;
+}
+.points h3{
+  font-size:15px;font-weight:600;letter-spacing:-.015em;
+  margin:11px 0 9px;
+}
+.points p{font-size:12.5px;color:var(--dim);line-height:1.8}
+
+/* ── 安装说明 ─────────────────────────────────── */
+.note{
+  margin-top:96px;padding-top:40px;
+  border-top:1px solid var(--hair2);
+  display:grid;grid-template-columns:170px 1fr;gap:40px;
+}
+.note h2{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.note .sub{font-size:11.5px;color:var(--faint);margin-top:5px}
+.note ol{margin-left:1.1em;font-size:12.5px;color:var(--dim)}
+.note li{margin-bottom:9px;padding-left:3px}
+.note code{
+  display:inline-block;
+  font-family:var(--num);font-size:11px;
+  background:var(--ac-w);color:var(--ac-d);
+  padding:3px 8px;border-radius:5px;
+  margin-top:5px;
+}
+.note .why{
+  font-size:11.5px;color:var(--faint);
+  line-height:1.8;margin-top:16px;
+  padding-left:14px;border-left:2px solid var(--hair);
+}
+
+/* ── 页脚 ─────────────────────────────────────── */
+footer{
+  margin-top:88px;padding:22px 0 56px;
+  border-top:1px solid var(--hair2);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  font-size:11.5px;color:var(--faint);
+}
+footer a{color:var(--faint);text-decoration:none}
+footer a:hover{color:var(--ink2)}
+
+@media(max-width:760px){
+  .points,.how,.duo,.gal{grid-template-columns:1fr}
+  .views > div{grid-template-columns:1fr;gap:8px;padding:20px 0}
+  .sec{margin-top:72px}
+  .note{grid-template-columns:1fr;gap:20px}
+  /* 分栏塌成上下单栏。溢出也要一起收掉 —— 留着的话窄屏上图会被裁掉右边
+     三分之一，那正好是数字和右侧信息所在的一侧 */
+  .hero{padding:60px 0 64px}
+  .hero-grid{grid-template-columns:1fr;gap:44px}
+  .hero .shotwrap{margin-right:0}
+  .hero h1{margin-top:20px}
+  .hero .say{margin-top:18px;max-width:none}
+  .hero + .sec{margin-top:56px}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="bar">
+    <img src="assets/icon.png" alt="">
+    <b>Yore</b>
+    <span class="cn">旧游</span>
+    <a class="right" href="https://github.com/BigKunLun/Yore">GitHub</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow"><b>YORE</b> · 旧游</div>
+
+        <h1>你去过的地方，<br>照片全都记着</h1>
+
+        <p class="say">读一遍 Mac「照片」图库，这些年的旅行自己就排出来了。一个字都不用填。</p>
+
+        <div class="cta">
+          <!-- 建仓并发布 Release 后此链接生效 -->
+          <a class="btn" href="https://github.com/BigKunLun/Yore/releases/latest">
+            <svg viewBox="0 0 16 16"><path d="M8 1v9m0 0L4.5 6.5M8 10l3.5-3.5M2 13h12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            下载
+          </a>
+          <p class="meta">免费<i>·</i>macOS<i>·</i>需要「照片」App</p>
+        </div>
+
+      </div>
+
+      <div class="shotwrap">
+        <div class="shot-frame">
+          <img src="assets/shot-1.jpg" alt="Yore 的行迹视图"
+               onload="this.parentElement.classList.remove('empty')">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="tag">你会看到什么</div>
+      <h2>三个视图，一段一段翻回去</h2>
+      <p class="sub">不是搜索工具，是拿来回看的 —— 时间、坐标、地名早就存在照片里，旧游只是把它们排成了这本册子。</p>
+    </div>
+
+    <div class="views">
+      <div>
+        <h3><em>01</em>行迹</h3>
+        <p>这些年的每一段旅行，按年份排开。哪一年跑得最远，哪一年一步没动，一眼看得出来。</p>
+      </div>
+      <div>
+        <h3><em>02</em>单程故事</h3>
+        <p>点进任意一段：左边是那几天的照片一路往下淌，右边的地图跟着一起滚 —— 照片走到哪儿，地图就跟到哪儿。</p>
+      </div>
+      <div>
+        <h3><em>03</em>年鉴</h3>
+        <p>去过多少个省，最南最西最远分别到过哪里，这些年的轨迹叠在同一张图上是什么样子。</p>
+      </div>
+    </div>
+
+    <div class="duo">
+      <div class="shot-frame">
+        <img src="assets/shot-2.jpg" alt="单程故事页"
+             onload="this.parentElement.classList.remove('empty')">
+      </div>
+      <div class="shot-frame">
+        <img src="assets/shot-3.jpg" alt="年鉴页"
+             onload="this.parentElement.classList.remove('empty')">
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="tag">年鉴里有什么</div>
+      <h2>同样一批照片，「照片」App 从不这样给你看</h2>
+      <p class="sub">十四个统计，全部由图库自己长出来 —— 下面每一张都是真实界面，地名和照片做过脱敏。</p>
+    </div>
+
+    <div class="gal">
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-atlas.jpg" alt="中国版图：去过的省份按停留天数着色">
+        </div>
+        <figcaption><b>中国版图</b>去过的省自己亮起来，颜色深浅是停留天数；没去过的留成空格，也是一种记录。</figcaption>
+      </figure>
+
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-film.jpg" alt="逐年：十四年排成一条胶片">
+        </div>
+        <figcaption><b>逐年</b>十四年排成一条胶片。柱高是那一年在外的天数，每一格配那年最长一段旅行里的照片。一年没出门的，画成斜纹格。</figcaption>
+      </figure>
+
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-ext.jpg" alt="四至：最北最南最东最西最远">
+        </div>
+        <figcaption><b>四至</b>最北、最南、最东、最西、最远各是哪儿。配的不是那段旅行的头图，是极点上按下的那一张。</figcaption>
+      </figure>
+
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-clock.jpg" alt="快门时钟：一天里什么时候按快门">
+        </div>
+        <figcaption><b>快门时钟</b>一天里什么时候按快门。外环是在外、内环是在家 —— 出门反而起得比在家晚，这种事你自己也未必知道。</figcaption>
+      </figure>
+
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-rhythm.jpg" alt="出门的节奏：按月份和星期">
+        </div>
+        <figcaption><b>出门的节奏</b>哪个月最爱出门，星期几出发。旁边配一张那个高峰月里的照片。</figcaption>
+      </figure>
+
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-prov.jpg" alt="省份停留排行">
+        </div>
+        <figcaption><b>省份停留</b>每个省待了多少天、去过几次、覆盖几座城，配那个省评分最高的一张照片。</figcaption>
+      </figure>
+
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-city.jpg" alt="停留最久的城市排行">
+        </div>
+        <figcaption><b>停留最久的城市</b>按天数排，不是按去的次数 —— 去十次各待一天，和去一次待十天，不是一回事。</figcaption>
+      </figure>
+
+      <figure class="w">
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-radius.jpg" alt="活动半径逐年变化折线">
+        </div>
+        <figcaption><b>越走越远，还是越走越近</b>每一年离家的平均距离连成一条线。哪一年最放得开，哪一年收了回来。</figcaption>
+      </figure>
+
+      <figure>
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-revisit.jpg" alt="一去再去：反复回去的地方">
+        </div>
+        <figcaption><b>一去再去</b>反复回去的那些地方，以及平均隔多久回去一次。</figcaption>
+      </figure>
+
+      <figure>
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-once.jpg" alt="只去过一次的地方">
+        </div>
+        <figcaption><b>只去过一次</b>一百多个只去过一次的地方，按时间倒序摊开。</figcaption>
+      </figure>
+
+      <figure>
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-loyal.jpg" alt="回头率前五名">
+        </div>
+        <figcaption><b>回头率</b>最常回去的前五名，从第一次到最近一次隔了多少年。</figcaption>
+      </figure>
+
+      <figure>
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-ytd.jpg" alt="今年与去年同期对比">
+        </div>
+        <figcaption><b>今年 vs 去年同期</b>按今天的月日把去年截断，两边比的是一样长的一段时间。</figcaption>
+      </figure>
+
+      <figure>
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-gap.jpg" alt="最长的一段空白">
+        </div>
+        <figcaption><b>最长的一段空白</b>两段旅行之间最长的一段没出门的日子。定位覆盖率低的年份只说「算不出行程」，不说「没出门」。</figcaption>
+      </figure>
+
+      <figure>
+        <div class="shot-frame">
+          <img loading="lazy" src="assets/stat-wild.jpg" alt="拍得最疯的一天">
+        </div>
+        <figcaption><b>拍得最疯的一天</b>一天按下多少次快门，从第一张到最后一张跨了多少小时。</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="tag">它怎么知道的</div>
+      <h2>你什么都不用填</h2>
+      <p class="sub">该有的信息，早就写在照片里了。</p>
+    </div>
+
+    <div class="how">
+      <div>
+        <div class="step">STEP 01</div>
+        <h3>读时间和坐标</h3>
+        <p>每张照片都带着拍摄时刻和 GPS 位置。Yore 把这些读出来，顺便拿到「照片」已经存好的地名。</p>
+        <p class="aside">全程只读。原始图库一个字节都不会被改。</p>
+      </div>
+      <div>
+        <div class="step">STEP 02</div>
+        <h3>分出旅行段</h3>
+        <p>离开常住地、连续两天以上，才算一段旅行。常住地由它自己判断，你也可以在设置里改掉。</p>
+        <p class="aside">出差和通勤不会被误算成旅行。</p>
+      </div>
+      <div>
+        <div class="step">STEP 03</div>
+        <h3>连成轨迹</h3>
+        <p>同一天、同一座城市的照片归到一处，再按天串成路线。</p>
+        <p class="aside">不取坐标平均值 —— 坐了一天高铁的话，均值会落在荒野中间。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="points sec">
+    <div>
+      <div class="n">01</div>
+      <h3>零输入</h3>
+      <p>不用打卡，不用手动建行程。它读一遍「照片」图库，几秒钟就把这些年的旅行分好段。</p>
+    </div>
+    <div>
+      <div class="n">02</div>
+      <h3>全在本地</h3>
+      <p>照片、位置、行程，一个字节都不上传。除了加载地图，不和外界通信。</p>
+    </div>
+    <div>
+      <div class="n">03</div>
+      <h3>只读不写</h3>
+      <p>复制一份数据库快照，只读打开，用完删掉。原始图库全程一个字节都不会被改。</p>
+    </div>
+  </section>
+
+  <section class="note">
+    <div>
+      <h2>第一次打开</h2>
+      <p class="sub">Gatekeeper 会拦一道</p>
+    </div>
+    <div>
+      <ol>
+        <li>把「旧游」拖进「应用程序」</li>
+        <li>双击它，会被拦住。<b>这一步不能跳</b> —— 不先被拦一次，下一步就找不到入口</li>
+        <li>打开「系统设置 → 隐私与安全性」，一路滚到底，点「仍要打开」</li>
+        <li>要是还不行，在「终端」里粘这行，再双击：
+          <code>xattr -dr com.apple.quarantine /Applications/旧游.app</code>
+        </li>
+      </ol>
+      <p class="why">没有买苹果的开发者证书，所以会被拦。macOS 15 起，老办法「按住 Control 点击 → 打开」已经被苹果取消了，只剩上面这条路。放行一次之后就不再问。</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Yore · 旧游</span>
+    <!-- 从第一屏挪下来的：它在上面只是把中文重说一遍，占着一整层的位置 -->
+    <span>You never logged a single trip. Your photos did.</span>
+    <span><a href="https://github.com/BigKunLun/Yore">GitHub</a></span>
+  </footer>
+
+</div>
+
+</body>
+</html>
